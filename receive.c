@@ -20,7 +20,6 @@ int main(void)
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		perror("can't allocate sockfd");
-		close(sockfd);
 		exit(1);
 	}
 
@@ -62,7 +61,6 @@ int main(void)
 	fp = fopen(filename, "wb");
 	if (fp == NULL) {
 		perror("can't open file");
-		close(fp);
 		close(connfd);
 		exit(1);
 	}

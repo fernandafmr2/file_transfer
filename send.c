@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) {
 		perror("can't allocate sockfd");
-		close(fd);
 		exit(1);
 	}  
 
@@ -65,7 +64,6 @@ int main(int argc, char *argv[])
 	if (fp == NULL) {
 		perror("can't open file");
 		close(fd);
-		fclose(fp);
 		exit(1);
 	}
 
