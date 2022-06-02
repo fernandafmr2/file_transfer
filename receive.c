@@ -7,18 +7,20 @@
 #include <sys/socket.h>
 #include "env.h"
 
-void write_file(int sockfd, FILE *fp);
+void writefile(int sockfd, FILE *fp);
 ssize_t total = 0;
 
-int main(void) {
-	int ret, connfd;
-	char addr[INET_ADDRSTRLEN], filename[BUFFSIZE] = {0};
-	FILE *fp;
-	socklen_t addrlen;
+int main(void) 
+{
+	int 		ret, connfd, sockfd;
+	char 		addr[INET_ADDRSTRLEN], filename[BUFFSIZE] = {0};
+	FILE 		*fp;
+	socklen_t 	addrlen;
 
-	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
-		perror("Can't allocate sockfd");
+		perror("can't allocate sockfd");
+		close(sockfd);
 		exit(1);
 	}
 
@@ -30,38 +32,44 @@ int main(void) {
 	ret = bind(sockfd, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
 	if (ret < 0) {
 		perror("bind error");
+		close(sockfd);
 		exit(1);
 	}
 
 	ret = listen(sockfd, LISTEN_PORT);
 	if (ret < 0) {
 		perror("listen error");
+		close(sockfd);
 		exit(1);
 	}
 
 	addrlen = sizeof(clientaddr);
 	connfd = accept(sockfd, (struct sockaddr *) &clientaddr, &addrlen);
 	if (connfd < 0) {
-		perror("Connect error");
+		perror("connect error");
+		close(sockfd);
 		exit(1);
 	}
 	close(sockfd);
 
 	ret = recv(connfd, filename, BUFFSIZE, 0);
 	if (ret < 0) {
-		perror("Can't receive file name");
+		perror("can't receive file name");
+		close(connfd);
 		exit(1);
 	}
 
 	fp = fopen(filename, "wb");
 	if (fp == NULL) {
-		perror("cant open file");
+		perror("can't open file");
+		close(fp);
+		close(connfd);
 		exit(1);
 	}
 
-	printf("Start rev %s from %s\n", filename, inet_ntop(AF_INET,
+	printf("start rev %s from %s\n", filename, inet_ntop(AF_INET,
 		&clientaddr.sin_addr, addr, INET_ADDRSTRLEN));
-	write_file(connfd, fp);
+	writefile(connfd, fp);
 	printf("receive success, numbytes = %ld\n", total);
 
 	fclose(fp);
@@ -70,7 +78,7 @@ int main(void) {
 } 
 
 
-void write_file(int sockfd, FILE *fp)
+void writefile(int sockfd, FILE *fp)
 {
 	ssize_t n;
 	char buff[MAX_LINE] = {0};
@@ -78,11 +86,13 @@ void write_file(int sockfd, FILE *fp)
 		total += n;
 		if (n == -1) {
 			perror("receive file error");
+			close(sockfd);
 			exit(1);
 		}
 
-		if((ssize_t)fwrite(buff, sizeof(char), n, fp) != n) {
-			perror("Write file error");
+		if ((ssize_t)fwrite(buff, sizeof(char), n, fp) != n) {
+			perror("write file error");
+			close(sockfd);
 			exit(1);
 		}
 		memset(buff, 0, MAX_LINE);

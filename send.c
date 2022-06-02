@@ -8,14 +8,14 @@
 #include <sys/socket.h>
 #include "env.h"
 
-void send_file(FILE *fp, int sockfd);
+void sendfile(int sockfd, FILE *fp);
 ssize_t total = 0;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-	int fd, ret;
-	char *filename;
-	FILE *fp;
+	int 		fd, ret;
+	char 		*filename;
+	FILE 		*fp;
 	struct sockaddr_in serveraddr;
 
 	if (argc != 3) {
@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) {
 		perror("can't allocate sockfd");
+		close(fd);
 		exit(1);
 	}  
 
@@ -33,36 +34,42 @@ int main(int argc, char* argv[])
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_port = htons(SERVER_PORT);
 	if (inet_pton(AF_INET, argv[2], &serveraddr.sin_addr) < 0) {
-		perror("Ipaddr convert error");
+		perror("ipaddr convert error");
+		close(fd);
 		exit(1);
 	}
 
 	ret = connect(fd, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
 	if (ret < 0) {
 		perror("connect error");
+		close(fd);
 		exit(1);
 	}
 
 	filename = basename(argv[1]);
 	if (filename == NULL) {
-		perror("cant get filename");
+		perror("can't get filename");
+		close(fd);
 		exit(1);
 	}
 
 	char buff[BUFFSIZE] = {0};
 	strncpy(buff, filename, strlen(filename));
 	if (send(fd, buff, BUFFSIZE, 0) < 0) {
-		perror("Can't send filename");
+		perror("can't send filename");
+		close(fd);
 		exit(1);
 	}
 
 	fp = fopen(argv[1], "rb");
 	if (fp == NULL) {
-		perror("cant open file");
+		perror("can't open file");
+		close(fd);
+		fclose(fp);
 		exit(1);
 	}
 
-	send_file(fp, fd);
+	sendfile(fd, fp);
 	printf("send success, numbytes = %ld\n", total);
 	
 	fclose(fp);
@@ -71,7 +78,7 @@ int main(int argc, char* argv[])
 }
 
 
-void send_file(FILE *fp, int sockfd)
+void sendfile(int sockfd, FILE *fp)
 {
 	int n;
 	char sendline[MAX_LINE] = {0};
@@ -79,11 +86,13 @@ void send_file(FILE *fp, int sockfd)
 		total += n;
 		if (n != MAX_LINE && ferror(fp)) {
 			perror("read file error");
+			close(sockfd);
 			exit(1);
 		}
 
 		if (send(sockfd, sendline, n, 0) < 0) {
-			perror("cant send file");
+			perror("can't send file");
+			close(sockfd);
 			exit(1);
 		}
 		memset(sendline, 0, MAX_LINE);
