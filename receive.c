@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include "env.h"
 
-void writefile(int sockfd, FILE *fp);
+int writefile(int sockfd, FILE *fp);
 ssize_t total = 0;
 
 int main(void) 
@@ -67,7 +67,13 @@ int main(void)
 
 	printf("start rev %s from %s\n", filename, inet_ntop(AF_INET,
 		&clientaddr.sin_addr, addr, INET_ADDRSTRLEN));
-	writefile(connfd, fp);
+	// writefile(connfd, fp);
+	if (writefile(connfd, fp) < 0) {
+		perror("write err");
+		fclose(fp);
+		close(connfd);
+		exit(1);
+	}
 	printf("receive success, numbytes = %ld\n", total);
 
 	fclose(fp);
@@ -76,23 +82,21 @@ int main(void)
 } 
 
 
-void writefile(int sockfd, FILE *fp)
+int writefile(int sockfd, FILE *fp)
 {
+	int main_exit_code = EXIT_SUCCESS;
 	ssize_t n;
 	char buff[MAX_LINE] = {0};
 	while ((n = recv(sockfd, buff, MAX_LINE, 0)) > 0) {
 		total += n;
 		if (n == -1) {
-			perror("receive file error");
-			close(sockfd);
-			exit(1);
+			main_exit_code = -1;
 		}
 
 		if ((ssize_t)fwrite(buff, sizeof(char), n, fp) != n) {
-			perror("write file error");
-			close(sockfd);
-			exit(1);
+			main_exit_code = -1;
 		}
 		memset(buff, 0, MAX_LINE);
 	}
+	return (main_exit_code);
 }
